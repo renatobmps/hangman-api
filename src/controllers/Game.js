@@ -16,7 +16,7 @@ class Game {
     this.init(userName).then(() => {
       console.info("Game started");
     }).catch(err => {
-      console.erro(err);
+      console.error(err);
     });
   }
 
