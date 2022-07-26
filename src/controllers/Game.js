@@ -226,7 +226,7 @@ class Game {
           mariadb: 'RANDOM',
         };
         const randomFunctionName = funcRandom[database.sequelize.getDialect()];
-        if (!randomFunctionName) throw new Error("Invalid random function");
+        if (!randomFunctionName) throw new Error(`Invalid random function for ${database.sequelize.getDialect()}`);
         const newWord = await database.Word.findOne({
           where: { id: { [Op.notIn]: allIds } },
           order: [sequelize.fn(randomFunctionName)],
