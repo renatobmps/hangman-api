@@ -218,7 +218,7 @@ class Game {
         const allWordToUser = await database.UserWord.findAll({ where: { idUsers: user.id, done: true } });
         const allIds = allWordToUser.map(word => word.idWords);
         const funcRandom = {
-          sqllite: 'RANDOM',
+          sqlite: 'RANDOM',
           mysql: 'RAND',
           postgres: 'RANDOM',
           mssql: 'NEWID',
