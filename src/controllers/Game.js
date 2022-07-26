@@ -14,9 +14,9 @@ class Game {
 
   constructor(userName) {
     this.init(userName).then(() => {
-      console.log("Game started");
+      console.info("Game started");
     }).catch(err => {
-      console.log(err);
+      console.erro(err);
     });
   }
 
@@ -78,8 +78,8 @@ class Game {
   updateGame() {
     const allowCases = {
       won: async () => {
-        const user = await database.User.findOne({ where: { name: this._userName } });
-        const word = await database.Word.findOne({ where: { word: this._secret } });
+        const user = await database.User.findOne({ raw: true, where: { name: this._userName } });
+        const word = await database.Word.findOne({ raw: true, where: { word: this._secret } });
         await database.UserWord.update({ done: true }, { where: { idUsers: user.id, idWords: word.id } });
       },
       lost: async () => {
@@ -197,8 +197,10 @@ class Game {
     const user = await database.User.findOne({ where: { name: _userName } });
     const userWord = await database.UserWord.findOne({ where: { idUsers: user.id, done: null } });
 
+    const completeUserWord = await database.UserWord.findAll({});
+
     if (!userWord) return false;
-    
+
     const word = await database.Word.findOne({ where: { id: userWord.idWords } });
     this._secret = word.word.toLowerCase() || null;
     this._hint = word.hint || null;
@@ -207,31 +209,45 @@ class Game {
   }
 
 
-  async generateSecretWord() {
-    const { _userName } = this;
+  generateSecretWord() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const { _userName } = this;
 
-    const user = await database.User.findOne({ where: { name: _userName } });
-    const allWordToUser = await database.UserWord.findAll({ where: { idUsers: user.id } });
-    const allIds = allWordToUser.map(word => word.idWords);
-    const newWord = await database.Word.findOne({
-      where: { id: { [Op.notIn]: allIds } },
-      order: [sequelize.fn('RAND')],
-    });
+        const user = await database.User.findOne({ where: { name: _userName } });
+        const allWordToUser = await database.UserWord.findAll({ where: { idUsers: user.id, done: true } });
+        const allIds = allWordToUser.map(word => word.idWords);
+        const funcRandom = {
+          sqllite: 'RANDOM',
+          mysql: 'RAND',
+          postgres: 'RANDOM',
+          mssql: 'NEWID',
+          oracle: 'DBMS_RANDOM.VALUE',
+          mariadb: 'RANDOM',
+        };
+        const randomFunctionName = funcRandom[database.sequelize.getDialect()];
+        if (!randomFunctionName) throw new Error("Invalid random function");
+        const newWord = await database.Word.findOne({
+          where: { id: { [Op.notIn]: allIds } },
+          order: [sequelize.fn(randomFunctionName)],
+        });
 
-    if (!!newWord) {
-      await database.UserWord.create({
-        idUsers: user.id,
-        idWords: newWord.id,
-        done: null,
-      });
-    }
+        const generatedSecretWord = newWord ? newWord.word.toLowerCase() : null;
+        if (!generatedSecretWord) throw new Error("There is no more words!");
 
-    this._secret = await newWord.word.toLowerCase() || null;
-    this._hint = await newWord.hint || null;
+        if (!!newWord) await database.UserWord.create({
+          idUsers: user.id,
+          idWords: newWord.id,
+          done: null,
+        });
 
-    console.log('[Game] generate:', {
-      self: this,
-      newWord: newWord,
+        this._secret = generatedSecretWord;
+        this._hint = await newWord.hint || null;
+
+        resolve(generatedSecretWord);
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 }

@@ -21,8 +21,10 @@ class Word {
 
   static async createWord(req, res) {
     try {
-      const word = await database.Word.create(req.body);
-      res.status(201).json(word);
+      let { word, hint, description } = req.body;
+      word = word.toLowerCase();
+      const response = await database.Word.create({ word, hint, description });
+      res.status(201).json(response);
     } catch (error) {
       res.status(500).json({ error });
     }
@@ -30,9 +32,11 @@ class Word {
 
   static async updateWord(req, res) {
     try {
-      const word = await database.Word.findByPk(req.params.id);
-      await word.update(req.body);
-      res.status(200).json(word);
+      let { word, hint, description } = req.body;
+      word = word.toLowerCase();
+      const response = await database.Word.findByPk(req.params.id);
+      await response.update({ word, hint, description });
+      res.status(200).json(response);
     } catch (error) {
       res.status(500).json({ error });
     }

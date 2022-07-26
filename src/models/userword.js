@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'UserWord',
+    raw: true,
   });
   return UserWord;
 };

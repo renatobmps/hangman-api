@@ -12,12 +12,30 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Word.init({
-    word: DataTypes.STRING,
-    hint: DataTypes.STRING,
-    description: DataTypes.STRING
+    word: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        notEmpty: true,
+      }
+    },
+    hint: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        is: /^[a-zA-Z]+$/
+      },
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    }
   }, {
     sequelize,
     modelName: 'Word',
+    raw: true,
   });
   return Word;
 };
