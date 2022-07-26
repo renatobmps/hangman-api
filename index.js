@@ -2,11 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const db = require('./src/models');
 const cors = require('cors');
-cors({ origin: '*' });
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 db.sequelize.sync().then(() => {
   app.listen(process.env.PORT || 3000, () => {
