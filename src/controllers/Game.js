@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { sequelize } = require('../models');
 const database = require('../models');
+const UserController = require('./User');
 
 let game;
 
@@ -22,6 +23,7 @@ class Game {
 
   async init(userName) {
     this._userName = userName;
+    this._userPoints = await UserController.getUserPoints(userName);
     this._lives = 6;
     const hasWord = await this.userHasWord();
     this._secret = await hasWord ? await this._secret : await this.generateSecretWord();
@@ -43,6 +45,10 @@ class Game {
 
   get userName() {
     return this._userName;
+  }
+
+  get userPoints() {
+    return this._userPoints;
   }
 
   get state() {
@@ -72,6 +78,7 @@ class Game {
       word: this.word,
       hint: this.hint,
       user: this.userName,
+      points: this.userPoints,
     };
   }
 
@@ -80,6 +87,13 @@ class Game {
       won: async () => {
         const user = await database.User.findOne({ raw: true, where: { name: this._userName } });
         const word = await database.Word.findOne({ raw: true, where: { word: this._secret } });
+        console.log('[UPDATING]', {
+          user,
+          word,
+          userWordUser: await database.UserWord.findAll({ raw: true, where: { idUsers: user.id } }),
+          userWordWord: await database.UserWord.findAll({ raw: true, where: { idWords: word.id } }),
+          userWordBoth: await database.UserWord.findAll({ raw: true, where: { idUsers: user.id, idWords: word.id } }),
+        })
         await database.UserWord.update({ done: true }, { where: { idUsers: user.id, idWords: word.id } });
       },
       lost: async () => {

@@ -17,15 +17,11 @@ class Login {
         },
       });
 
-      if (!userData) {
-        res.status(401).json({ error: 'User not found' });
-      }
+      if (!userData) return res.status(401).json({ error: 'User not found' });
 
       const isPasswordValid = await bcrypt.compare(password, userData.password);
 
-      if (!isPasswordValid) {
-        res.status(401).json({ error: 'Password is incorrect' });
-      }
+      if (!isPasswordValid) return res.status(401).json({ error: 'Password is incorrect' });
 
       const token = jwt.sign({
         id: userData.id,

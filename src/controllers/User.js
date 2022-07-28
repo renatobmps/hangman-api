@@ -58,6 +58,20 @@ class User {
       res.status(500).json({ error });
     }
   }
+
+  static async getUserPoints(userName) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const user = await database.User.findOne({ where: { name: userName } });
+        const userId = user.id;
+        const userPoints = await database.UserWord.findAll({ raw: true, where: { idUsers: userId, done: 1 } });
+        const points = userPoints.length;
+        resolve(points);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 }
 
 module.exports = User;

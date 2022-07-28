@@ -22,17 +22,17 @@ const checkLogin = require('./src/middlewares/login');
 // routes
 const user = require('./src/controllers/User');
 app.post('/users', user.createUser);
-app.get('/users', checkLogin.login, user.getAllUsers);
-app.get('/users/:id', checkLogin.login, user.getUserById);
+app.get('/users', checkLogin.admLogin, user.getAllUsers);
+app.get('/users/:id', checkLogin.admLogin, user.getUserById);
 app.put('/users/:id', checkLogin.login, user.updateUser);
-app.delete('/users/:id', checkLogin.login, user.deleteUser);
+app.delete('/users/:id', checkLogin.admLogin, user.deleteUser);
 
 const word = require('./src/controllers/Word');
-app.post('/words', checkLogin.login, word.createWord);
+app.post('/words', checkLogin.admLogin, word.createWord);
 app.get('/words', checkLogin.login, word.getAllWords);
 app.get('/words/:id', checkLogin.login, word.getWordById);
-app.put('/words/:id', checkLogin.login, word.updateWord);
-app.delete('/words/:id', checkLogin.login, word.deleteWord);
+app.put('/words/:id', checkLogin.admLogin, word.updateWord);
+app.delete('/words/:id', checkLogin.admLogin, word.deleteWord);
 
 const login = require('./src/controllers/Login');
 app.post('/login', login.login);
