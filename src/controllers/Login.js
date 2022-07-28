@@ -26,7 +26,9 @@ class Login {
       const token = jwt.sign({
         id: userData.id,
         name: userData.name,
-      }, process.env.JWT_SECRET);
+      }, process.env.JWT_SECRET, {
+        expiresIn: '365d',
+      });
 
       res.status(200).json({ token });
     } catch (error) {
