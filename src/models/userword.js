@@ -21,8 +21,8 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   UserWord.init({
-    idUsers: DataTypes.NUMBER,
-    idWords: DataTypes.NUMBER,
+    idUsers: DataTypes.INTEGER,
+    idWords: DataTypes.INTEGER,
     done: DataTypes.BOOLEAN
   }, {
     sequelize,
