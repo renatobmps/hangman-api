@@ -64,7 +64,7 @@ class User {
       try {
         const user = await database.User.findOne({ where: { name: userName } });
         const userId = user.id;
-        const userPoints = await database.UserWord.findAll({ raw: true, where: { idUsers: userId, done: 1 } });
+        const userPoints = await database.UserWord.findAll({ raw: true, where: { idUsers: userId, done: true } });
         const points = userPoints.length;
         resolve(points);
       } catch (error) {

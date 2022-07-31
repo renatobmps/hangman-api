@@ -87,13 +87,6 @@ class Game {
       won: async () => {
         const user = await database.User.findOne({ raw: true, where: { name: this._userName } });
         const word = await database.Word.findOne({ raw: true, where: { word: this._secret } });
-        console.log('[UPDATING]', {
-          user,
-          word,
-          userWordUser: await database.UserWord.findAll({ raw: true, where: { idUsers: user.id } }),
-          userWordWord: await database.UserWord.findAll({ raw: true, where: { idWords: word.id } }),
-          userWordBoth: await database.UserWord.findAll({ raw: true, where: { idUsers: user.id, idWords: word.id } }),
-        })
         await database.UserWord.update({ done: true }, { where: { idUsers: user.id, idWords: word.id } });
       },
       lost: async () => {
