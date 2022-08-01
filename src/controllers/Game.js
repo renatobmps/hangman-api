@@ -26,8 +26,8 @@ class Game {
     this._userPoints = await UserController.getUserPoints(userName);
     this._lives = 6;
     const hasWord = await this.userHasWord();
-    this._secret = await hasWord ? await this._secret : await this.generateSecretWord();
-    this._word = this._secret.replace(/\w/g, "_");
+    this._secret = hasWord ? this._secret : await this.generateSecretWord();
+    this._word = this._secret.replace(/[a-záàâãéèêíïóôõöúçñ]/gi, "_");
     if (!this._secret) throw new Error("Could not generate secret word");
   }
 
@@ -170,9 +170,19 @@ class Game {
       this._state = "lost";
     }
 
+    const letterVariants = {
+      a: 'áàâã',
+      e: 'éèê',
+      i: 'íï',
+      o: 'óôõö',
+      u: 'ú',
+      c: 'ç',
+      n: 'ñ',
+    }
+
     const splittedWord = this._secret.split("");
     splittedWord.forEach((secretLetter, index) => {
-      if (secretLetter === letter) {
+      if (secretLetter === letter || (letterVariants[letter] && letterVariants[letter].includes(secretLetter))) {
         const splittedWord = this.word.split("");
         splittedWord[index] = secretLetter;
         this._word = splittedWord.join("");
