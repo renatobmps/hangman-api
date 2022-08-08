@@ -6,196 +6,212 @@ const UserController = require('./User');
 let game;
 
 class Game {
-  _secret = "";
-  _word;
-  _hint = "";
-  _lives;
-  _state = "playing";
-  _alreadyTried = [];
+  _triedLetters = [];
+  _game_id = null;
+  _hint = '';
+  _lives = 6;
+  _points = 0;
+  _secret = '';
+  _state = 'not started';
+  _user = '';
+  _word = '';
 
-  constructor(userName) {
-    this.init(userName).then(() => {
-      console.info("Game started");
-    }).catch(err => {
-      console.error(err);
-    });
+  static async startGame(req, res) {
+    try {
+      const { id } = req.user;
+      const hasGame = await Game.userGame(id);
+      const game = new Game({
+        ...req.user,
+        ...hasGame ? hasGame : await Game.generateSecretWord(id),
+      });
+      await game.updateStatus();
+      res.status(200).json(game.status);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   }
 
-  async init(userName) {
-    this._userName = userName;
-    this._userPoints = await UserController.getUserPoints(userName);
-    this._lives = 6;
-    const hasWord = await this.userHasWord();
-    this._secret = hasWord ? this._secret : await this.generateSecretWord();
-    this._word = this._secret.replace(/[a-záàâãéèêíïóôõöúçñ]/gi, "_");
-    if (!this._secret) throw new Error("Could not generate secret word");
+  static async guessLetter(req, res) {
+    try {
+      const { id } = req.user;
+      const { letter } = req.body;
+
+      const startedGame = await Game.userGame(id);
+      if (!startedGame) return res.status(400).json({ error: "You have not started a game" });
+      const game = new Game({ ...startedGame });
+      await game.updateStatus();
+
+      game.tryLetter(letter);
+
+      res.status(200).json(game.status);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   }
 
-  get secret() {
-    return this._word;
-  }
+  constructor(gameData) {
+    const {
+      idGame, hint, initialLife, points, word, name
+    } = gameData;
 
-  get word() {
-    return this._word;
-  }
-
-  get lives() {
-    return this._lives;
-  }
-
-  get userName() {
-    return this._userName;
-  }
-
-  get userPoints() {
-    return this._userPoints;
-  }
-
-  get state() {
-    return this._state;
-  }
-
-  get alreadyTried() {
-    return this._alreadyTried;
-  }
-
-  get hint() {
-    return this._hint;
+    this._triedLetters = [];
+    this._game_id = idGame;
+    this._hint = hint.toLowerCase();
+    this._lives = initialLife;
+    this._points = points;
+    this._secret = word.toLowerCase();
+    this._state = 'playing';
+    this._user = name;
+    this._word = word.toLowerCase().replace(/[a-záàâãéèêíïóôõöúçñ]/gi, "_");
   }
 
   get status() {
-    this._state = this.checkIfWon()
-      ? "won"
-      : this._lives > 0
-        ? "playing"
-        : "lost";
-
-    this.updateGame();
     return {
-      lives: this.lives,
-      state: this.state,
-      triedLetters: this.alreadyTried,
-      word: this.word,
-      hint: this.hint,
-      user: this.userName,
-      points: this.userPoints,
-    };
+      user: this._user,
+      points: this._points,
+      lives: this._lives,
+      word: this._word,
+      hint: this._hint,
+      triedLetters: this._triedLetters,
+      state: this._state,
+    }
   }
 
-  updateGame() {
-    const allowCases = {
-      won: async () => {
-        const user = await database.User.findOne({ raw: true, where: { name: this._userName } });
-        const word = await database.Word.findOne({ raw: true, where: { word: this._secret } });
-        await database.UserWord.update({ done: true }, { where: { idUsers: user.id, idWords: word.id } });
-      },
-      lost: async () => {
-        const user = await database.User.findOne({ where: { name: this._userName } });
-        const word = await database.Word.findOne({ where: { word: this._secret } });
-        await database.UserWord.update({ done: false }, { where: { idUsers: user.id, idWords: word.id } });
-      },
-      playing: () => { return }
-    }
-
-    const selectedCase = allowCases[this.state];
-    if (!selectedCase) throw new Error("Invalid state");
-
-    selectedCase();
-  }
-
-  static startGame(req, res) {
-    const { user } = req;
-    if (!user || !user.id || !user.name) throw new Error("User not logged");
-
-    game = new Game(user.name);
-    game.init(user.name).then(() => {
-      res.status(200).json(game.status);
-    }).catch(err => {
-      res.status(500).json({ error: err.message });
-    });
-  }
-
-  static guessLetter(req, res) {
-    const { user } = req;
-    if (!user || !user.id || !user.name) throw new Error("User not logged");
-    if (!game) throw new Error("Game not started");
-    if (game.status.state === "lost") throw new Error("Game is finished");
-
-    const { letter } = req.body;
-
-    game.tryLetter(letter);
-
-    res.status(200).json(game.status);
-  }
-
-  static finishGame(req, res) {
-    const { user } = req;
-    if (!user || !user.id || !user.name) throw new Error("User not logged");
-    if (!game) throw new Error("Game not started");
-    if (game.status.state === "lost") throw new Error("Game is finished");
-
-    game.finish();
-
-    res.status(200).json(game.status);
-  }
-
-  finish() {
-    this._state = "lost";
-    this._lives = 0;
-  }
-
-  tryLetter(letter) {
-    if (this._state === "finished") throw new Error("Game is finished");
-    if (this._state === "lost") throw new Error("Game is lost");
-    if (this._state === "won") throw new Error("Game is won");
-
-    letter = letter.toLowerCase();
-    if (!this.isValidLetter(letter)) {
-      const messageError = `Letter must be one character. Informed: ${letter}`;
-      throw new Error(messageError);
-    }
-
-    if (this._alreadyTried.includes(letter)) {
-      throw new Error("Letter already tried");
-    }
-
-    this._alreadyTried.push(letter);
-    const index = this._secret.indexOf(letter);
-
-    if (index === -1) {
-      this._lives--;
-    }
-
-    if (this._lives === 0) {
-      this._state = "lost";
-    }
-
-    const letterVariants = {
-      a: 'áàâã',
-      e: 'éèê',
-      i: 'íï',
-      o: 'óôõö',
-      u: 'ú',
-      c: 'ç',
-      n: 'ñ',
-    }
-
-    const splittedWord = this._secret.split("");
-    splittedWord.forEach((secretLetter, index) => {
-      if (secretLetter === letter || (letterVariants[letter] && letterVariants[letter].includes(secretLetter))) {
-        const splittedWord = this.word.split("");
-        splittedWord[index] = secretLetter;
-        this._word = splittedWord.join("");
+  static async userGame(userId) {
+    try {
+      const playedWords = await database.UserWord.findAll({ raw: true, where: { idUsers: userId } });
+      const wordsWin = playedWords.filter(word => !!word.done);
+      const userGame = playedWords.find(word => word.done === null);
+      if (!userGame) return null;
+      return {
+        idGame: userGame.id,
+        points: wordsWin.length,
+        ...userGame,
+        ...await database.Word.findByPk(userGame.idWords, { raw: true }),
       }
-    });
-
-    if (this._word === this._secret) {
-      this._state = "won";
+    } catch (err) {
+      throw new Error(err.message || err || "Error finding user game");
     }
   }
 
-  checkIfWon() {
-    return `${this.word}`.toLowerCase() === `${this._secret}`.toLowerCase();
+  static async generateSecretWord(userId) {
+    try {
+      const playedWords = await database.UserWord.findAll({ raw: true, where: { idUsers: userId } });
+      const wordsWin = playedWords.filter(word => !!word.done);
+      const wordsLose = playedWords.filter(word => !word.done);
+      const newWords = await database.Word.findAll({ raw: true, where: { id: { [Op.notIn]: playedWords.map(word => word.idWords) } } });
+      const randomWord = newWords[Math.floor(Math.random() * newWords.length)];
+      const newWord = randomWord || wordsLose[Math.floor(Math.random() * wordsLose.length)];
+
+      if (!newWord) throw new Error("There is no word to play");
+
+      let userGame = await database.UserWord.findOne({ raw: true, where: { idUsers: userId, idWords: newWord.id } });
+
+      if (!userGame) {
+        userGame = await database.UserWord.create({ idUsers: userId, idWords: newWord.id, initialLife: 6 }, { raw: true });
+      } else {
+        await database.UserWord.update({ done: null }, { where: { idUsers: userId, idWords: newWord.id } });
+      }
+
+      console.log('Vida inicial?', {
+        idGame: userGame.id,
+        points: wordsWin.length,
+        ...userGame.dataValues || userGame,
+        ...newWord,
+      });
+
+      return {
+        idGame: userGame.id,
+        points: wordsWin.length,
+        ...userGame.dataValues || userGame,
+        ...newWord,
+      }
+    } catch (err) {
+      throw new Error(err.message || err || "Error finding user game");
+    }
+  }
+
+  async updateStatus() {
+    try {
+      let triedLetters = await database.TriedLetters.findAll({ raw: true, where: { idUserWords: this._game_id } });
+      triedLetters.forEach(letter => {
+        this.tryLetter(letter.letter, letter.id);
+      });
+    } catch (err) {
+      throw new Error(err.message || err || "Error finding user game");
+    }
+  }
+
+  async init() {
+  }
+
+  tryLetter(letter, idLetter = null) {
+    try {
+      console.log({
+        self: this,
+        letter,
+      });
+
+      if (this._state !== 'playing') throw new Error("You are not playing");
+      if (this._state === "finished") throw new Error("Game is finished");
+      if (this._state === "lost") throw new Error("Game is lost");
+      if (this._state === "won") throw new Error("Game is won");
+
+      const data = {
+        letter: letter.toLowerCase(),
+      };
+
+      data.isValid = this.isValidLetter(data.letter);
+      if (!data.isValid) throw new Error(`Letter must be one character. Informed: ${letter}`);
+
+      data.isTried = this._triedLetters.includes(data.letter);
+      if (data.isTried) throw new Error(`Letter ${data.letter} already tried`);
+
+      this._triedLetters.push(data.letter);
+
+      const letterVariants = {
+        a: 'áàâã',
+        e: 'éèê',
+        i: 'íï',
+        o: 'óôõö',
+        u: 'ú',
+        c: 'ç',
+        n: 'ñ',
+      };
+      data.variants = letterVariants[data.letter] || '';
+
+      const withoutSpecial = this._secret.split('').map(char => {
+        if (data.variants.includes(char)) return data.letter;
+        return char;
+      }).join('');
+
+      data.indexes = [];
+      withoutSpecial.split('').forEach((char, index) => {
+        if (char === data.letter) data.indexes.push(index);
+      });
+      data.hasWord = data.indexes.length > 0;
+
+
+      data.indexes.forEach(index => {
+        const letter = this._secret[index];
+        this._word = this._word.substring(0, index) + letter + this._word.substring(index + 1);
+      });
+
+      if (!data.hasWord) this._lives--;
+      if (this._lives === 0) this._state = 'lost';
+      if (this._word === this._secret) this._state = 'won';
+
+      if (idLetter) {
+        database.TriedLetters.update({ correct: data.hasWord }, { where: { id: idLetter } });
+      } else {
+        database.TriedLetters.create({
+          letter: data.letter, correct: data.hasWord, idUserWords: this._game_id
+        });
+      }
+      console.log('[DATA]', data);
+    } catch (err) {
+      console.log(err.message || err || 'Error while trying to guess letter');
+    }
   }
 
   isValidLetter(letter) {
@@ -206,66 +222,6 @@ class Game {
       "y", "z",
     ];
     return acceptedLetters.includes(letter);
-  }
-
-  async userHasWord() {
-    const { _userName } = this;
-
-    const user = await database.User.findOne({ where: { name: _userName } });
-    const userWord = await database.UserWord.findOne({ where: { idUsers: user.id, done: null } });
-
-    const completeUserWord = await database.UserWord.findAll({});
-
-    if (!userWord) return false;
-
-    const word = await database.Word.findOne({ where: { id: userWord.idWords } });
-    this._secret = word.word.toLowerCase() || null;
-    this._hint = word.hint || null;
-
-    return !!word;
-  }
-
-
-  generateSecretWord() {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const { _userName } = this;
-
-        const user = await database.User.findOne({ where: { name: _userName } });
-        const allWordToUser = await database.UserWord.findAll({ where: { idUsers: user.id, done: true } });
-        const allIds = allWordToUser.map(word => word.idWords);
-        const funcRandom = {
-          sqlite: 'RANDOM',
-          mysql: 'RAND',
-          postgres: 'RANDOM',
-          mssql: 'NEWID',
-          oracle: 'DBMS_RANDOM.VALUE',
-          mariadb: 'RANDOM',
-        };
-        const randomFunctionName = funcRandom[database.sequelize.getDialect()];
-        if (!randomFunctionName) throw new Error(`Invalid random function for ${database.sequelize.getDialect()}`);
-        const newWord = await database.Word.findOne({
-          where: { id: { [Op.notIn]: allIds } },
-          order: [sequelize.fn(randomFunctionName)],
-        });
-
-        const generatedSecretWord = newWord ? newWord.word.toLowerCase() : null;
-        if (!generatedSecretWord) throw new Error("There is no more words!");
-
-        if (!!newWord) await database.UserWord.create({
-          idUsers: user.id,
-          idWords: newWord.id,
-          done: null,
-        });
-
-        this._secret = generatedSecretWord;
-        this._hint = await newWord.hint || null;
-
-        resolve(generatedSecretWord);
-      } catch (err) {
-        reject(err);
-      }
-    });
   }
 }
 

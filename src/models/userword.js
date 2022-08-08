@@ -18,7 +18,8 @@ module.exports = (sequelize, DataTypes) => {
   UserWord.init({
     idUsers: DataTypes.INTEGER,
     idWords: DataTypes.INTEGER,
-    done: DataTypes.BOOLEAN
+    done: DataTypes.BOOLEAN,
+    initialLife: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'UserWord',
