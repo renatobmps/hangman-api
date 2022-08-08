@@ -38,10 +38,13 @@ class Game {
 
       const startedGame = await Game.userGame(id);
       if (!startedGame) return res.status(400).json({ error: "You have not started a game" });
-      const game = new Game({ ...startedGame });
+      const game = new Game({
+        ...req.user,
+        ...startedGame
+      });
       await game.updateStatus();
 
-      game.tryLetter(letter);
+      await game.tryLetter(letter);
 
       res.status(200).json(game.status);
     } catch (err) {
@@ -113,13 +116,6 @@ class Game {
         await database.UserWord.update({ done: null }, { where: { idUsers: userId, idWords: newWord.id } });
       }
 
-      console.log('Vida inicial?', {
-        idGame: userGame.id,
-        points: wordsWin.length,
-        ...userGame.dataValues || userGame,
-        ...newWord,
-      });
-
       return {
         idGame: userGame.id,
         points: wordsWin.length,
@@ -142,16 +138,8 @@ class Game {
     }
   }
 
-  async init() {
-  }
-
-  tryLetter(letter, idLetter = null) {
+  async tryLetter(letter, idLetter = null) {
     try {
-      console.log({
-        self: this,
-        letter,
-      });
-
       if (this._state !== 'playing') throw new Error("You are not playing");
       if (this._state === "finished") throw new Error("Game is finished");
       if (this._state === "lost") throw new Error("Game is lost");
@@ -202,15 +190,14 @@ class Game {
       if (this._word === this._secret) this._state = 'won';
 
       if (idLetter) {
-        database.TriedLetters.update({ correct: data.hasWord }, { where: { id: idLetter } });
+        await database.TriedLetters.update({ correct: data.hasWord }, { where: { id: idLetter } });
       } else {
-        database.TriedLetters.create({
+        await database.TriedLetters.create({
           letter: data.letter, correct: data.hasWord, idUserWords: this._game_id
         });
       }
-      console.log('[DATA]', data);
     } catch (err) {
-      console.log(err.message || err || 'Error while trying to guess letter');
+      throw new Error(err.message || err || 'Error while trying to guess letter');
     }
   }
 
