@@ -186,8 +186,14 @@ class Game {
       });
 
       if (!data.hasWord) this._lives--;
-      if (this._lives === 0) this._state = 'lost';
-      if (this._word === this._secret) this._state = 'won';
+      if (this._lives === 0) {
+        this._state = 'lost';
+        await database.UserWord.update({ done: 0 }, { where: { id: this._game_id } });
+      };
+      if (this._word === this._secret) {
+        this._state = 'won';
+        await database.UserWord.update({ done: 1 }, { where: { id: this._game_id } });
+      }
 
       if (idLetter) {
         await database.TriedLetters.update({ correct: data.hasWord }, { where: { id: idLetter } });
