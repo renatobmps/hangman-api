@@ -15,6 +15,8 @@ class Game {
   _state = 'not started';
   _user = '';
   _word = '';
+  _description = null;
+  _secret_description = '';
 
   static async startGame(req, res) {
     try {
@@ -54,7 +56,7 @@ class Game {
 
   constructor(gameData) {
     const {
-      idGame, hint, initialLife, points, word, name
+      idGame, hint, initialLife, points, word, name, description
     } = gameData;
 
     this._triedLetters = [];
@@ -63,6 +65,7 @@ class Game {
     this._lives = initialLife;
     this._points = points;
     this._secret = word.toLowerCase();
+    this._secret_description = description;
     this._state = 'playing';
     this._user = name;
     this._word = word.toLowerCase().replace(/[a-záàâãéèêíïóôõöúçñ]/gi, "_");
@@ -77,6 +80,7 @@ class Game {
       hint: this._hint,
       triedLetters: this._triedLetters,
       state: this._state,
+      description: this._description,
     }
   }
 
@@ -192,6 +196,7 @@ class Game {
       };
       if (this._word === this._secret) {
         this._state = 'won';
+        this._description = this._secret_description;
         await database.UserWord.update({ done: 1 }, { where: { id: this._game_id } });
       }
 
