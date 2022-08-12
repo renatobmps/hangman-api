@@ -29,8 +29,8 @@ app.delete('/users/:id', checkLogin.admLogin, user.deleteUser);
 
 const word = require('./src/controllers/Word');
 app.post('/words', checkLogin.admLogin, word.createWord);
-app.get('/words', checkLogin.login, word.getAllWords);
-app.get('/words/:id', checkLogin.login, word.getWordById);
+app.get('/words', checkLogin.admLogin, word.getAllWords);
+app.get('/words/:id', checkLogin.admLogin, word.getWordById);
 app.put('/words/:id', checkLogin.admLogin, word.updateWord);
 app.delete('/words/:id', checkLogin.admLogin, word.deleteWord);
 
