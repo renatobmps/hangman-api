@@ -1,5 +1,6 @@
 const database = require('../models');
 const bcrypt = require('bcrypt');
+const { Op } = require('sequelize');
 
 class User {
   static async getAllUsers(req, res) {
@@ -9,8 +10,14 @@ class User {
         return {
           ...user.dataValues,
           password: undefined,
+          updatedAt: undefined,
         };
       });
+
+      for (const user of users) {
+        user.performance = await User.getUserPerformance(user.id);
+      };
+
       res.status(200).json(users);
     } catch (error) {
       res.status(500).json({ error });
@@ -19,8 +26,14 @@ class User {
 
   static async getUserById(req, res) {
     try {
-      const user = await database.User.findByPk(req.params.id);
+      const user = await database.User.findOne({
+        raw: true,
+        where: { id: req.params.id }
+      });
+
+      user.performance = await User.getUserPerformance(req.params.id);
       user.password = undefined;
+      user.updatedAt = undefined;
       res.status(200).json(user);
     } catch (error) {
       res.status(500).json({ error });
@@ -59,14 +72,50 @@ class User {
     }
   }
 
-  static async getUserPoints(userName) {
+  static async getUserPerformance(idUser) {
     return new Promise(async (resolve, reject) => {
       try {
-        const user = await database.User.findOne({ where: { name: userName } });
-        const userId = user.id;
-        const userPoints = await database.UserWord.findAll({ raw: true, where: { idUsers: userId, done: true } });
-        const points = userPoints.length;
-        resolve(points);
+        const userGames = await database.UserWord.findAll({
+          raw: true,
+          where: {
+            idUsers: idUser,
+            done: {
+              [Op.ne]: null,
+            }
+          }
+        });
+        const gameLetters = await database.TriedLetters.findAll({
+          raw: true,
+          where: {
+            idUserWords: {
+              [Op.in]: userGames.map(game => game.id),
+            },
+          },
+        });
+        resolve({
+          game: {
+            total: userGames.length,
+            won: {
+              total: userGames.filter(game => !!game.done).length,
+              percentage: Number((userGames.filter(game => !!game.done).length / userGames.length * 100).toFixed(2)),
+            },
+            lost: {
+              total: userGames.filter(game => game.done == 0).length,
+              percentage: Number((userGames.filter(game => game.done == 0).length / userGames.length * 100).toFixed(2)),
+            },
+          },
+          letterPrecision: {
+            total: gameLetters.length,
+            won: {
+              total: gameLetters.filter(letter => !!letter.correct).length,
+              percentage: Number((gameLetters.filter(letter => !!letter.correct).length / gameLetters.length * 100).toFixed(2)),
+            },
+            lost: {
+              total: gameLetters.filter(letter => letter.correct == 0).length,
+              percentage: Number((gameLetters.filter(letter => letter.correct == 0).length / gameLetters.length * 100).toFixed(2)),
+            },
+          }
+        });
       } catch (error) {
         reject(error);
       }

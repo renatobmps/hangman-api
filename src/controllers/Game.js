@@ -15,6 +15,7 @@ class Game {
   _state = 'not started';
   _user = '';
   _word = '';
+  _difficult = 0;
   _description = null;
   _secret_description = '';
 
@@ -56,7 +57,7 @@ class Game {
 
   constructor(gameData) {
     const {
-      idGame, hint, initialLife, points, word, name, description
+      idGame, hint, initialLife, points, word, difficult, name, description
     } = gameData;
 
     this._triedLetters = [];
@@ -69,6 +70,7 @@ class Game {
     this._state = 'playing';
     this._user = name;
     this._word = word.toLowerCase().replace(/[a-záàâãéèêíïóôõöúçñ]/gi, "_");
+    this._difficult = difficult;
   }
 
   get status() {
@@ -77,6 +79,7 @@ class Game {
       points: this._points,
       lives: this._lives,
       word: this._word,
+      difficult: this._difficult,
       hint: this._hint,
       triedLetters: this._triedLetters,
       state: this._state,
@@ -90,11 +93,23 @@ class Game {
       const wordsWin = playedWords.filter(word => !!word.done);
       const userGame = playedWords.find(word => word.done === null);
       if (!userGame) return null;
+      const newWord = await database.Word.findByPk(userGame.idWords, { raw: true });
+      const allWordGames = await database.UserWord.findAll({
+        raw: true,
+        where: {
+          idWords: newWord.id,
+          done: {
+            [Op.ne]: null,
+          }
+        }
+      });
+      const difficult = !allWordGames.length ? null : allWordGames.filter(game => !game.done).length / allWordGames.length * 100;
       return {
         idGame: userGame.id,
         points: wordsWin.length,
         ...userGame,
-        ...await database.Word.findByPk(userGame.idWords, { raw: true }),
+        ...newWord,
+        difficult,
       }
     } catch (err) {
       throw new Error(err.message || err || "Error finding user game");
@@ -111,6 +126,16 @@ class Game {
       const newWord = randomWord || wordsLose[Math.floor(Math.random() * wordsLose.length)];
 
       if (!newWord) throw new Error("There is no word to play");
+      const allWordGames = await database.UserWord.findAll({
+        raw: true,
+        where: {
+          idWords: newWord.id,
+          done: {
+            [Op.ne]: null,
+          }
+        }
+      });
+      const difficult = !allWordGames.length ? null : allWordGames.filter(game => !game.done).length / allWordGames.length * 100;
 
       let userGame = await database.UserWord.findOne({ raw: true, where: { idUsers: userId, idWords: newWord.id } });
 
@@ -125,6 +150,7 @@ class Game {
         points: wordsWin.length,
         ...userGame.dataValues || userGame,
         ...newWord,
+        difficult,
       }
     } catch (err) {
       throw new Error(err.message || err || "Error finding user game");

@@ -22,8 +22,8 @@ const checkLogin = require('./src/middlewares/login');
 // routes
 const user = require('./src/controllers/User');
 app.post('/users', user.createUser);
-app.get('/users', checkLogin.admLogin, user.getAllUsers);
-app.get('/users/:id', checkLogin.admLogin, user.getUserById);
+app.get('/users', checkLogin.login, user.getAllUsers);
+app.get('/users/:id', checkLogin.login, user.getUserById);
 app.put('/users/:id', checkLogin.login, user.updateUser);
 app.delete('/users/:id', checkLogin.admLogin, user.deleteUser);
 
