@@ -123,7 +123,12 @@ class Game {
       const wordsLose = playedWords.filter(word => !word.done);
       const newWords = await database.Word.findAll({ raw: true, where: { id: { [Op.notIn]: playedWords.map(word => word.idWords) } } });
       const randomWord = newWords[Math.floor(Math.random() * newWords.length)];
-      const newWord = randomWord || wordsLose[Math.floor(Math.random() * wordsLose.length)];
+      const newWord = randomWord || await database.Word.findOne({
+        raw: true,
+        where: {
+          id: wordsLose[Math.floor(Math.random() * wordsLose.length)].idWords,
+        },
+      });
 
       if (!newWord) throw new Error("There is no word to play");
       const allWordGames = await database.UserWord.findAll({
@@ -139,11 +144,7 @@ class Game {
 
       let userGame = await database.UserWord.findOne({ raw: true, where: { idUsers: userId, idWords: newWord.id } });
 
-      if (!userGame) {
-        userGame = await database.UserWord.create({ idUsers: userId, idWords: newWord.id, initialLife: 6 }, { raw: true });
-      } else {
-        await database.UserWord.update({ done: null }, { where: { idUsers: userId, idWords: newWord.id } });
-      }
+      userGame = await database.UserWord.create({ idUsers: userId, idWords: newWord.id, initialLife: 6 }, { raw: true });
 
       return {
         idGame: userGame.id,

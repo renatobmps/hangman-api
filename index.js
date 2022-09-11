@@ -24,7 +24,7 @@ const user = require('./src/controllers/User');
 app.post('/users', user.createUser);
 app.get('/users', checkLogin.login, user.getAllUsers);
 app.get('/users/:id', checkLogin.login, user.getUserById);
-app.put('/users/:id', checkLogin.login, user.updateUser);
+app.put('/users/', checkLogin.login, user.updateUser);
 app.delete('/users/:id', checkLogin.admLogin, user.deleteUser);
 
 const word = require('./src/controllers/Word');

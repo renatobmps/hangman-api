@@ -53,7 +53,11 @@ class User {
 
   static async updateUser(req, res) {
     try {
-      const user = await database.User.findByPk(req.params.id);
+      const { id } = req.user;
+      if (req.body.password) {
+        req.body.password = await bcrypt.hash(req.body.password, 10);
+      };
+      const user = await database.User.findByPk(id);
       await user.update(req.body);
       user.password = undefined;
       res.status(200).json(user);
