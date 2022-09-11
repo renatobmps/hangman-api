@@ -83,7 +83,7 @@ class Game {
       hint: this._hint,
       triedLetters: this._triedLetters,
       state: this._state,
-      description: this._description,
+      description: this._state == 'won' ? this._description : undefined,
     }
   }
 
