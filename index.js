@@ -6,7 +6,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors('*'));
+app.use(cors('https://forca-renatobmps.vercel.app'));
 
 db.sequelize.sync().then(() => {
   app.listen(process.env.PORT || 3000, () => {
