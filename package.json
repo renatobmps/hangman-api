@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon index.js",
+    "build": "echo do not need build yet",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "test": "echo tests not implemented yet"
   },
   "keywords": [],
   "author": "",
