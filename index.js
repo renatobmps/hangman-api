@@ -26,6 +26,7 @@ app.get('/users', checkLogin.login, user.getAllUsers);
 app.get('/users/:id', checkLogin.login, user.getUserById);
 app.put('/users/', checkLogin.login, user.updateUser);
 app.delete('/users/:id', checkLogin.admLogin, user.deleteUser);
+app.get('/ranking', checkLogin.admLogin, user.getTopTenUsers);
 
 const word = require('./src/controllers/Word');
 app.post('/words', checkLogin.admLogin, word.createWord);

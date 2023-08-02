@@ -24,6 +24,36 @@ class User {
     }
   }
 
+  static async getTopTenUsers(req, res) {
+    try {
+      let users = await database.User.findAll();
+      users = users.map(user => {
+        return {
+          ...user.dataValues,
+          password: undefined,
+          updatedAt: undefined,
+        };
+      });
+
+      const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+      sevenDaysAgo.setHours(0);
+      sevenDaysAgo.setMinutes(0);
+      sevenDaysAgo.setSeconds(0);
+
+      for (const user of users) {
+        user.performance = await User.getUserPerformance(user.id, sevenDaysAgo);
+      };
+
+      const activeUsers = users.filter(user => user.performance.game.total > 0);
+
+      const orderByResult = activeUsers.sort((a, b) => b.performance.game.won.total - a.performance.game.won.total);
+
+      res.status(200).json(orderByResult.filter((_user, index) => index < 10));
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+  }
+
   static async getUserById(req, res) {
     try {
       const user = await database.User.findOne({
@@ -76,7 +106,7 @@ class User {
     }
   }
 
-  static async getUserPerformance(idUser) {
+  static async getUserPerformance(idUser, sinceAt = '1900-01-01') {
     return new Promise(async (resolve, reject) => {
       try {
         const userGames = await database.UserWord.findAll({
@@ -85,7 +115,10 @@ class User {
             idUsers: idUser,
             done: {
               [Op.ne]: null,
-            }
+            },
+            updatedAt: {
+              [Op.gte]: new Date(sinceAt),
+            },
           }
         });
         const gameLetters = await database.TriedLetters.findAll({
