@@ -37,6 +37,7 @@ app.delete('/words/:id', checkLogin.admLogin, word.deleteWord);
 
 const login = require('./src/controllers/Login');
 app.post('/login', login.login);
+app.post('/login/reset', checkLogin.admLogin, login.resetPassword);
 
 const game = require('./src/controllers/Game');
 app.get('/games/start', checkLogin.login, game.startGame);

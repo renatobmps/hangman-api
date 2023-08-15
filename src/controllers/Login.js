@@ -1,6 +1,7 @@
 const database = require('../models');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const createHash = require('hash-generator');
 
 class Login {
   constructor(loginService) {
@@ -31,6 +32,25 @@ class Login {
       });
 
       res.status(200).json({ token });
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+  }
+
+  static async resetPassword(req, res) {
+    const { username } = req.body;
+
+    try {
+      const userData = await database.User.findOne({
+        where: { name: username },
+      });
+      if (!userData) return res.status(401).json({ error: 'User not found' });
+
+      const newPassword = createHash(8);
+      req.body.password = await bcrypt.hash(newPassword, 10);
+
+      const user = await database.User.create(req.body);
+      res.status(201).json(user);
     } catch (error) {
       res.status(500).json({ error });
     }

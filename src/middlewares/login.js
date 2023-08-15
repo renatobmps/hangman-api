@@ -25,7 +25,8 @@ module.exports = {
       const { id, name } = jwt.verify(authorization, process.env.JWT_SECRET);
       const admins = [
         'renatobmpsilva',
-      ]
+        'renatobmps',
+      ];
       if (!admins.includes(name)) return res.status(403).json({ error: "Invalid token" });
       req.user = { id, name };
       next();
