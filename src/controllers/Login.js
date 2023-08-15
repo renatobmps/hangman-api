@@ -50,7 +50,10 @@ class Login {
       req.body.password = await bcrypt.hash(newPassword, 10);
 
       const user = await database.User.create(req.body);
-      res.status(201).json(user);
+      res.status(201).json({
+        ...user,
+        password: newPassword,
+      });
     } catch (error) {
       res.status(500).json({ error });
     }
