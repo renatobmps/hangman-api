@@ -51,7 +51,7 @@ class Login {
 
       await userData.update(req.body);
       res.status(201).json({
-        ...userData,
+        username,
         password: newPassword,
       });
     } catch (error) {
