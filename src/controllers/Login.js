@@ -42,6 +42,7 @@ class Login {
 
     try {
       const userData = await database.User.findOne({
+        raw: true,
         where: { name: username },
       });
       if (!userData) return res.status(401).json({ error: 'User not found' });
